@@ -1,66 +1,38 @@
+ui:
+  title: "Hybrid CKO Health Dashboard"
+  header: "Hybrid CKO Health Dashboard"
+
+alerting:
+  slack:
+    webhook-url: "https://hooks.slack.com/services/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"
+    description: https://lodging-health-dashboard.rcp.us-west-2.buildtime.test.exp-aws.net/ 
+    method: "POST"
+    body: |
+      {
+        "text": "[ALERT_TRIGGERED_OR_RESOLVED]: [ENDPOINT_GROUP] - [ENDPOINT_NAME] - [ALERT_DESCRIPTION]"
+      }
+
 endpoints:
-  - name: front-end
-    group: core
-    url: "https://twin.sh/health"
-    interval: 5m
-    conditions:
-      - "[STATUS] == 200"
-      - "[BODY].status == UP"
-      - "[RESPONSE_TIME] < 150"
-
-  - name: back-end
-    group: core
-    url: "https://example.org/"
-    interval: 5m
-    conditions:
-      - "[STATUS] == 200"
-      - "[CERTIFICATE_EXPIRATION] > 48h"
-
-  - name: monitoring
-    group: internal
-    url: "https://example.org/"
-    interval: 5m
-    conditions:
-      - "[STATUS] == 200"
-
-  - name: nas
-    group: internal
-    url: "https://example.org/"
-    interval: 5m
-    conditions:
-      - "[STATUS] == 200"
-
-  - name: example-dns-query
-    url: "8.8.8.8" # Address of the DNS server to use
-    interval: 5m
-    dns:
-      query-name: "example.com"
-      query-type: "A"
-    conditions:
-      - "[BODY] == 93.184.216.34"
-      - "[DNS_RCODE] == NOERROR"
-
-  - name: icmp-ping
-    url: "icmp://example.org"
-    interval: 1m
-    conditions:
-      - "[CONNECTED] == true"
-
-  - name: check-domain-expiration
-    url: "https://example.org/"
-    interval: 1h
-    conditions:
-      - "[DOMAIN_EXPIRATION] > 720h"
-
-  - name: grpc-service
-    url: "grpc://grpc-service.example.com:443"
+  - group: "Pricing Module12"
+    name: experience-api-pricing GraphQL /isActive
+    url: "https://experience-api-pricing.rcp.us-west-2.partnerexperiences.test.exp-aws.net/isActive"
     interval: 1m
     client:
+      # false (default) means the server's certificate chain and host name will be verified
       insecure: true
-      timeout: 3s
-    headers:
-      Authorization: "Bearer =load(~/.identity-jwt)"
     conditions:
-      - "[BODY].status == SERVING"
-      - "[RESPONSE_TIME] < 3000"      
-      
+      - "[STATUS] == 200"
+      - "[CONNECTED] == false"
+      - "[RESPONSE_TIME] < 3000"
+      - "[CERTIFICATE_EXPIRATION] > 48h"
+    alerts:
+      - type: slack
+        description: https://lodging-health-dashboard.rcp.us-west-2.buildtime.test.exp-aws.net/ 
+        failure-threshold: 2
+      # - test-threshold: 2
+      # - enabled: true
+      # - send-on-resolved: true
+      # - description: "healthcheck failed"
+
+
+    

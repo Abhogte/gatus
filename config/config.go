@@ -27,11 +27,13 @@ import (
 const (
 	// DefaultConfigurationFilePath is the default path that will be used to search for the configuration file
 	// if a custom path isn't configured through the GATUS_CONFIG_PATH environment variable
-	DefaultConfigurationFilePath = "config/config.yaml"
+	// DefaultConfigurationFilePath = "config/config.yaml"
+	DefaultConfigurationFilePath = "config.yaml"
 
 	// DefaultFallbackConfigurationFilePath is the default fallback path that will be used to search for the
 	// configuration file if DefaultConfigurationFilePath didn't work
-	DefaultFallbackConfigurationFilePath = "config/config.yml"
+	// DefaultFallbackConfigurationFilePath = "config/config.yml"
+	DefaultFallbackConfigurationFilePath = "config.yml"
 )
 
 var (
@@ -133,6 +135,7 @@ func (config *Config) UpdateLastFileModTime() {
 // LoadConfiguration loads the full configuration composed from the main configuration file
 // and all composed configuration files
 func LoadConfiguration(configPath string) (*Config, error) {
+	fmt.Print("Is the load configuration file called")
 	var configBytes []byte
 	var fileInfo os.FileInfo
 	var usedConfigPath string
@@ -188,6 +191,7 @@ func LoadConfiguration(configPath string) (*Config, error) {
 	}
 	config.configPath = usedConfigPath
 	config.UpdateLastFileModTime()
+	fmt.Println("This is in the LoadConfiguration from the config.go file: ", config)
 	return config, err
 }
 

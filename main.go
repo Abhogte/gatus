@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -18,11 +19,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("cfg value in main func :", cfg)
 	initializeStorage(cfg)
 	start(cfg)
 	// Wait for termination signal
+	log.Println("Hello we are in main")
 	signalChannel := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
+	log.Println("Hello we are in miain")
 	signal.Notify(signalChannel, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-signalChannel
@@ -32,11 +36,18 @@ func main() {
 		done <- true
 	}()
 	<-done
+	log.Print("All the logs shut down")
 	log.Println("Shutting down")
+
 }
 
 func start(cfg *config.Config) {
+	fmt.Println("We are in start")
+	fmt.Println(cfg.Endpoints[len(cfg.Endpoints)-1].Group)
+	fmt.Println(cfg.Endpoints[len(cfg.Endpoints)-1].Name)
+	fmt.Println("cfg value in start func : ", cfg)
 	go controller.Handle(cfg)
+	fmt.Println("We are in start function")
 	watchdog.Monitor(cfg)
 	go listenToConfigurationFileChanges(cfg)
 }
@@ -53,13 +64,18 @@ func save() {
 }
 
 func loadConfiguration() (*config.Config, error) {
+
+	// GATUS_CONFIG_PATH := "C:\\Users\abhogte\\Deskop\\GatusWork\\AdityaGatus\\config.yaml"
+	// configPath := os.Getenv("GATUS_CONFIG_PATH")
 	configPath := os.Getenv("GATUS_CONFIG_PATH")
+	fmt.Println("****************", configPath)
 	// Backwards compatibility
 	if len(configPath) == 0 {
 		if configPath = os.Getenv("GATUS_CONFIG_FILE"); len(configPath) > 0 {
 			log.Println("WARNING: GATUS_CONFIG_FILE is deprecated. Please use GATUS_CONFIG_PATH instead.")
 		}
 	}
+	// return config.LoadConfiguration(configPath)
 	return config.LoadConfiguration(configPath)
 }
 
@@ -85,6 +101,7 @@ func initializeStorage(cfg *config.Config) {
 }
 
 func listenToConfigurationFileChanges(cfg *config.Config) {
+	fmt.Println("listenToConfigurationFileChanges")
 	for {
 		time.Sleep(30 * time.Second)
 		if cfg.HasLoadedConfigurationBeenModified() {

@@ -31,22 +31,22 @@ var (
 	ErrInvalidDNSResolver        = errors.New("invalid DNS resolver specified. Required format is {proto}://{ip}:{port}")
 	ErrInvalidDNSResolverPort    = errors.New("invalid DNS resolver port")
 	ErrInvalidClientOAuth2Config = errors.New("invalid oauth2 configuration: must define all fields for client credentials flow (token-url, client-id, client-secret, scopes)")
-  ErrFileNotExist              = errors.New("file not exists: ")
+	ErrFileNotExist              = errors.New("file not exists: ")
 	ErrFailedToLoadCert          = errors.New("failed to load a server certificate in the configuration")
-  ErrFailedToParseCert         = errors.New("Failed to parse the server certificate")
+	ErrFailedToParseCert         = errors.New("Failed to parse the server certificate")
 	ErrFailedToCreateConnection  = errors.New("Failed to create a client connection")
- 
-  // default client configuration for non-grpc
+
+	// default client configuration for non-grpc
 	defaultConfig = Config{
 		Insecure:       false,
 		IgnoreRedirect: false,
 		Timeout:        defaultHTTPTimeout,
 	}
-  // default client configuration for grpc. gRPC client does not handle 302 redirects.
-  // a gRPC client is not meant to be a full HTTP client. For example, cookies and redirects are not part of gRPC.
-	defaultGrpcConfig = Config {
-		Insecure:       false,
-		Timeout:        defaultGRPCTimeout,
+	// default client configuration for grpc. gRPC client does not handle 302 redirects.
+	// a gRPC client is not meant to be a full HTTP client. For example, cookies and redirects are not part of gRPC.
+	defaultGrpcConfig = Config{
+		Insecure: false,
+		Timeout:  defaultGRPCTimeout,
 	}
 )
 
@@ -58,7 +58,7 @@ func GetDefaultConfig() *Config {
 
 // GetGrpcDefaultConfig returns a copy of the default client configuration for grpc.
 func GetGrpcDefaultConfig() *Config {
-  cfg := defaultGrpcConfig
+	cfg := defaultGrpcConfig
 	return &cfg
 }
 
@@ -90,9 +90,9 @@ type Config struct {
 	// text representation of the server certificate. If CertPath is passed, the file will be loaded into the cert.
 	cert string
 
-	httpClient *http.Client
-  grpcClientConn *grpc.ClientConn
-  grpcHealthClient healthpb.HealthClient
+	httpClient       *http.Client
+	grpcClientConn   *grpc.ClientConn
+	grpcHealthClient healthpb.HealthClient
 }
 
 // DNSResolverConfig is the parsed configuration from the DNSResolver config string.
@@ -124,19 +124,19 @@ func (c *Config) ValidateAndSetDefaults() error {
 	if c.HasOAuth2Config() && !c.OAuth2Config.isValid() {
 		return ErrInvalidClientOAuth2Config
 	}
-  if len(c.CertPath) != 0 {
-    _, err := os.Stat(c.CertPath)
-    if os.IsNotExist(err) {
-      return fmt.Errorf("%v: %s", ErrFileNotExist, c.CertPath)
-    }
+	if len(c.CertPath) != 0 {
+		_, err := os.Stat(c.CertPath)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("%v: %s", ErrFileNotExist, c.CertPath)
+		}
 
-    // load a server certificate from the local disk 
+		// load a server certificate from the local disk
 		serverCA, err := os.ReadFile(c.CertPath)
 		if err != nil {
 			return fmt.Errorf("%v: %w", ErrFailedToLoadCert, err)
 		}
 		c.cert = string(serverCA)
-  }
+	}
 	return nil
 }
 
@@ -245,46 +245,46 @@ func configureOAuth2(httpClient *http.Client, c OAuth2Config) *http.Client {
 	return oauth2cfg.Client(ctx)
 }
 
-// Note that unlike a http client, client.dns-resolver and client.oauth2 are not supported for the grpc health check client. 
+// Note that unlike a http client, client.dns-resolver and client.oauth2 are not supported for the grpc health check client.
 func (c *Config) getGRPCHealthClient(hostPort string) (healthpb.HealthClient, *grpc.ClientConn, error) {
-  if c.grpcHealthClient == nil || c.grpcClientConn == nil || c.isGrpcClientConnShtdown() {
-    // initial tls configuration
-    tlsConfig := &tls.Config {
-      InsecureSkipVerify: c.Insecure,
-    }
+	if c.grpcHealthClient == nil || c.grpcClientConn == nil || c.isGrpcClientConnShtdown() {
+		// initial tls configuration
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: c.Insecure,
+		}
 
-    // handle the server certificate if given
-    if len(c.cert) != 0 {
-      // parse and append a server certificate
-      serverCA := []byte(c.cert)
-      certPool := x509.NewCertPool()
-      if !certPool.AppendCertsFromPEM(serverCA) {
-        return nil, nil, fmt.Errorf("%v: %v", ErrFailedToParseCert, c.cert)
-      }
+		// handle the server certificate if given
+		if len(c.cert) != 0 {
+			// parse and append a server certificate
+			serverCA := []byte(c.cert)
+			certPool := x509.NewCertPool()
+			if !certPool.AppendCertsFromPEM(serverCA) {
+				return nil, nil, fmt.Errorf("%v: %v", ErrFailedToParseCert, c.cert)
+			}
 
-      // update the tls configuration with the server cert.
-      tlsConfig.RootCAs = certPool
-    }
+			// update the tls configuration with the server cert.
+			tlsConfig.RootCAs = certPool
+		}
 
-    // create the connection
-    // (TODO) currently mTLS is not supported. If a gRPC server requires a mTLS for health check, 
-    // it would be ideal to request to remove mTLS for the health check.
-    creds := credentials.NewTLS(tlsConfig)
-    conn, err := grpc.Dial(hostPort, grpc.WithTransportCredentials(creds))
-    if err != nil {
-      return nil, nil, fmt.Errorf("%v: %w", ErrFailedToCreateConnection, err)
-    }
-    c.grpcClientConn = conn
-    c.grpcHealthClient = healthpb.NewHealthClient(conn)
-  }
-  return c.grpcHealthClient, c.grpcClientConn, nil
+		// create the connection
+		// (TODO) currently mTLS is not supported. If a gRPC server requires a mTLS for health check,
+		// it would be ideal to request to remove mTLS for the health check.
+		creds := credentials.NewTLS(tlsConfig)
+		conn, err := grpc.Dial(hostPort, grpc.WithTransportCredentials(creds))
+		if err != nil {
+			return nil, nil, fmt.Errorf("%v: %w", ErrFailedToCreateConnection, err)
+		}
+		c.grpcClientConn = conn
+		c.grpcHealthClient = healthpb.NewHealthClient(conn)
+	}
+	return c.grpcHealthClient, c.grpcClientConn, nil
 }
 
 func (c *Config) isGrpcClientConnShtdown() bool {
-  if c.grpcClientConn == nil {
-    return true
-  }
-  
-  connState :=c.grpcClientConn.GetState()
-  return connState == connectivity.Shutdown
+	if c.grpcClientConn == nil {
+		return true
+	}
+
+	connState := c.grpcClientConn.GetState()
+	return connState == connectivity.Shutdown
 }

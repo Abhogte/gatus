@@ -19,6 +19,7 @@ import (
 	"github.com/TwiN/gatus/v5/core/ui"
 	grpcConfig "github.com/TwiN/gatus/v5/grpc"
 	"github.com/TwiN/gatus/v5/util"
+	"github.com/google/uuid"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -86,8 +87,10 @@ var (
 	// the data takes a while to be updated.
 	ErrInvalidEndpointIntervalForDomainExpirationPlaceholder = errors.New("the minimum interval for an endpoint with a condition using the " + DomainExpirationPlaceholder + " placeholder is 300s (5m)")
 
-	// ErrInvalidGRPCUrl is the error when the GRPC URL is not in this format "//<hostname>:<port>" 
+	// ErrInvalidGRPCUrl is the error when the GRPC URL is not in this format "//<hostname>:<port>"
 	ErrInvalidGRPCUrl = errors.New("Invalid GRPC URL string")
+
+	ErrUniqueIDNotPresent = errors.New("Unique ID is not present in the url")
 )
 
 // Endpoint is the configuration of a monitored
@@ -128,7 +131,7 @@ type Endpoint struct {
 	// Alerts is the alerting configuration for the endpoint in case of failure
 	Alerts []*alert.Alert `yaml:"alerts,omitempty"`
 
-	// GrpcConfig used to wrap the RPC request with the service, method and body  
+	// GrpcConfig used to wrap the RPC request with the service, method and body
 	GrpcConfig *grpcConfig.Config `yaml:"grpc,omitempty"`
 
 	// ClientConfig is the configuration of the client used to communicate with the endpoint's target
@@ -144,6 +147,9 @@ type Endpoint struct {
 	NumberOfSuccessesInARow int `yaml:"-"`
 
 	loadedFiles map[string]LoadedFile
+
+	// Unique Identifiction number for error log
+	TraceId string
 }
 
 // IsEnabled returns whether the endpoint is enabled or not
@@ -223,7 +229,7 @@ func (endpoint *Endpoint) ValidateAndSetDefaults() error {
 	}
 
 	// In endpoints[].headers, a text header value can contain load(<file-path>) function. The file-loaded string will
-	// replace the function part from the header value. You can prepend ~ in the path.  
+	// replace the function part from the header value. You can prepend ~ in the path.
 	// "Authorization": "Token Principal-JWT=load(~/.identity-jwt)"
 	if len(endpoint.Headers) == 0 {
 		endpoint.Headers = make(map[string]string)
@@ -260,6 +266,7 @@ func (endpoint *Endpoint) ValidateAndSetDefaults() error {
 	if len(endpoint.Conditions) == 0 {
 		return ErrEndpointWithNoCondition
 	}
+
 	for _, c := range endpoint.Conditions {
 		if endpoint.Interval < 5*time.Minute && c.hasDomainExpirationPlaceholder() {
 			return ErrInvalidEndpointIntervalForDomainExpirationPlaceholder
@@ -298,19 +305,22 @@ func (endpoint Endpoint) Key() string {
 // EvaluateHealth sends a request to the endpoint's URL and evaluates the conditions of the endpoint.
 func (endpoint *Endpoint) EvaluateHealth() *Result {
 	result := &Result{Success: true, Errors: []string{}}
+
 	// Parse or extract hostname from URL
+	// endpoint.UniqueId = generatingUniqueId()
 	if endpoint.DNS != nil {
 		result.Hostname = strings.TrimSuffix(endpoint.URL, ":53")
 	} else if endpoint.Type() == EndpointTypeGRPC {
 		urlObject, err := url.Parse(endpoint.URL)
+		fmt.Println("This is the URL object", endpoint.URL)
 		if err != nil {
 			result.AddError(err.Error())
 		} else {
 			port := urlObject.Port()
 			if len(port) == 0 {
-				result.AddError(ErrInvalidGRPCUrl.Error())	
+				result.AddError(ErrInvalidGRPCUrl.Error())
 			}
-			result.Hostname = urlObject.Hostname() 	// "//" and :<port> are stripped
+			result.Hostname = urlObject.Hostname() // "//" and :<port> are stripped
 		}
 	} else {
 		urlObject, err := url.Parse(endpoint.URL)
@@ -331,8 +341,10 @@ func (endpoint *Endpoint) EvaluateHealth() *Result {
 			result.AddError(err.Error())
 		}
 	}
+	fmt.Println("We are in the evaluateHealth method")
 	// Call the endpoint (if there's no errors)
 	if len(result.Errors) == 0 {
+		// fmt.Println("before call", result)
 		endpoint.call(result)
 	} else {
 		result.Success = false
@@ -382,7 +394,7 @@ func (endpoint *Endpoint) call(result *Result) {
 		request = endpoint.buildHTTPRequest()
 	}
 	startTime := time.Now()
-
+	// fmt.Println("This is an endpoint", endpoint)
 	if endpointType == EndpointTypeDNS {
 		endpoint.DNS.query(endpoint.URL, result)
 		result.Duration = time.Since(startTime)
@@ -426,14 +438,14 @@ func (endpoint *Endpoint) call(result *Result) {
 			}
 
 			md := metadata.New(headers)
-			ctx = metadata.NewOutgoingContext(ctx, md)	
+			ctx = metadata.NewOutgoingContext(ctx, md)
 		}
 		defer cancel()
 
 		/// Execute Check method of HealthClient
 		// for now, response headers are not used and reserved for future
 		var respHeaders metadata.MD
-		request := &healthpb.HealthCheckRequest {
+		request := &healthpb.HealthCheckRequest{
 			Service: string(endpoint.GrpcConfig.ServiceNameToCheck),
 		}
 		rpcPeer := new(peer.Peer)
@@ -443,7 +455,7 @@ func (endpoint *Endpoint) call(result *Result) {
 			result.AddError(err.Error())
 			return
 		}
-		tlsInfo := rpcPeer.AuthInfo.(credentials.TLSInfo) 
+		tlsInfo := rpcPeer.AuthInfo.(credentials.TLSInfo)
 		if len(tlsInfo.State.PeerCertificates) > 0 {
 			certificate := tlsInfo.State.PeerCertificates[0]
 			result.CertificateExpiration = time.Until(certificate.NotAfter)
@@ -494,13 +506,18 @@ func (endpoint *Endpoint) buildHTTPRequest() *http.Request {
 		bodyBuffer = bytes.NewBuffer([]byte(endpoint.Body))
 	}
 	request, _ := http.NewRequest(endpoint.Method, endpoint.URL, bodyBuffer)
+	fmt.Println("We are building request here", request)
+	endpoint.TraceId = generatingUniqueId()
 	for k, v := range endpoint.Headers {
+
 		v, _ = HandleLoadFuctionIfExist(endpoint.loadedFiles, v)
 		request.Header.Set(k, v)
 		if k == HostHeader {
 			request.Host = v
 		}
 	}
+	request.Header.Set("TraceId", endpoint.TraceId)
+	fmt.Println("new value of req", request)
 	return request
 }
 
@@ -532,4 +549,10 @@ func (endpoint *Endpoint) needsToRetrieveIP() bool {
 		}
 	}
 	return false
+}
+
+func generatingUniqueId() string {
+	id := uuid.New()
+	return id.String()
+
 }

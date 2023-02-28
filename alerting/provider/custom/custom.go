@@ -60,6 +60,7 @@ func (provider *AlertProvider) buildHTTPRequest(endpoint *core.Endpoint, alert *
 	url = strings.ReplaceAll(url, "[ENDPOINT_GROUP]", endpoint.Group)
 	body = strings.ReplaceAll(body, "[ENDPOINT_URL]", endpoint.URL)
 	url = strings.ReplaceAll(url, "[ENDPOINT_URL]", endpoint.URL)
+	fmt.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$44 We are in the buildHTTPRequest method")
 	if resolved {
 		body = strings.ReplaceAll(body, "[ALERT_TRIGGERED_OR_RESOLVED]", provider.GetAlertStatePlaceholderValue(true))
 		url = strings.ReplaceAll(url, "[ALERT_TRIGGERED_OR_RESOLVED]", provider.GetAlertStatePlaceholderValue(true))

@@ -84,11 +84,12 @@ type Field struct {
 func (provider *AlertProvider) buildRequestBody(endpoint *core.Endpoint, alert *alert.Alert, result *core.Result, resolved bool) []byte {
 	var message, color, results string
 	if resolved {
-		message = fmt.Sprintf("An alert for *%s* has been resolved after passing successfully %d time(s) in a row", endpoint.DisplayName(), alert.SuccessThreshold)
+		message = fmt.Sprintf("An alert for *%s* has been resolved after passing successfully %d time(s) in a row *%s*", endpoint.DisplayName(), alert.SuccessThreshold, endpoint.TraceId)
 		color = "#36A64F"
 	} else {
-		message = fmt.Sprintf("An alert for *%s* has been triggered due to having failed %d time(s) in a row", endpoint.DisplayName(), alert.FailureThreshold)
+		message = fmt.Sprintf("An alerts for *%s* has been triggered due to having failed %d time(s) in a row with: %s", endpoint.DisplayName(), alert.FailureThreshold, endpoint.TraceId)
 		color = "#DD0000"
+		fmt.Println(message)
 	}
 	for _, conditionResult := range result.ConditionResults {
 		var prefix string
@@ -98,7 +99,9 @@ func (provider *AlertProvider) buildRequestBody(endpoint *core.Endpoint, alert *
 			prefix = ":x:"
 		}
 		results += fmt.Sprintf("%s - `%s`\n", prefix, conditionResult.Condition)
+		// results += fmt.Sprintf("Trace-Id - %s", endpoint.TraceId)
 	}
+	results += fmt.Sprintf("Trace-Id - %s", endpoint.TraceId)
 	var description string
 	if alertDescription := alert.GetDescription(); len(alertDescription) > 0 {
 		description = ":\n> " + alertDescription
@@ -108,7 +111,7 @@ func (provider *AlertProvider) buildRequestBody(endpoint *core.Endpoint, alert *
 		Attachments: []Attachment{
 			{
 				Title: ":helmet_with_white_cross: Gatus",
-				Text:  message + description,
+				Text:  message + description + "/" + endpoint.TraceId,
 				Short: false,
 				Color: color,
 				Fields: []Field{

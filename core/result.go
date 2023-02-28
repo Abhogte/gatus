@@ -2,6 +2,7 @@ package core
 
 import (
 	"time"
+
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
@@ -10,7 +11,7 @@ type Result struct {
 	// HTTPStatus is the HTTP response status code
 	HTTPStatus int `json:"status"`
 
-	// Possible values: HealthCheckResponse_UNKNOWN, HealthCheckResponse_SERVING, HealthCheckResponse_NOT_SERVING, 
+	// Possible values: HealthCheckResponse_UNKNOWN, HealthCheckResponse_SERVING, HealthCheckResponse_NOT_SERVING,
 	// HealthCheckResponse_SERVICE_UNKNOWN
 	// See https://pkg.go.dev/google.golang.org/grpc@v1.51.0/health/grpc_health_v1#HealthCheckResponse_ServingStatus
 	GRPCHealthStatus healthpb.HealthCheckResponse_ServingStatus `json:"grpcHealthStatus"`
@@ -56,6 +57,10 @@ type Result struct {
 	// This means that the call Endpoint.EvaluateHealth both populates the body (if necessary)
 	// and sets it to nil after the evaluation has been completed.
 	body []byte
+
+	UniqueId string
+
+	splunkLink string
 }
 
 // AddError adds an error to the result's list of errors.

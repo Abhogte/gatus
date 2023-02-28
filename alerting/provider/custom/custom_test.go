@@ -111,6 +111,7 @@ func TestAlertProvider_Send(t *testing.T) {
 }
 
 func TestAlertProvider_buildHTTPRequest(t *testing.T) {
+	fmt.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$44 We are in the buildHTTPRequest method in custon_test.go")
 	customAlertProvider := &AlertProvider{
 		URL:  "https://example.com/[ENDPOINT_GROUP]/[ENDPOINT_NAME]?event=[ALERT_TRIGGERED_OR_RESOLVED]&description=[ALERT_DESCRIPTION]&url=[ENDPOINT_URL]",
 		Body: "[ENDPOINT_NAME],[ENDPOINT_GROUP],[ALERT_DESCRIPTION],[ENDPOINT_URL],[ALERT_TRIGGERED_OR_RESOLVED]",
@@ -154,6 +155,7 @@ func TestAlertProvider_buildHTTPRequest(t *testing.T) {
 }
 
 func TestAlertProvider_buildHTTPRequestWithCustomPlaceholder(t *testing.T) {
+	fmt.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$44 We are in the buildHTTPRequest method in the buildHTTPRequestWith Custom placeholder")
 	customAlertProvider := &AlertProvider{
 		URL:     "https://example.com/[ENDPOINT_GROUP]/[ENDPOINT_NAME]?event=[ALERT_TRIGGERED_OR_RESOLVED]&description=[ALERT_DESCRIPTION]",
 		Body:    "[ENDPOINT_NAME],[ENDPOINT_GROUP],[ALERT_DESCRIPTION],[ALERT_TRIGGERED_OR_RESOLVED]",

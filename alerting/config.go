@@ -70,6 +70,8 @@ type Config struct {
 
 	// Twilio is the configuration for the twilio alerting provider
 	Twilio *twilio.AlertProvider `yaml:"twilio,omitempty"`
+
+	AlertConfigVal int `yaml:"alertVal,omitempty"`
 }
 
 // GetAlertingProviderByAlertType returns an provider.AlertProvider by its corresponding alert.Type
@@ -82,6 +84,7 @@ func (config *Config) GetAlertingProviderByAlertType(alertType alert.Type) provi
 			if fieldValue.IsNil() {
 				return nil
 			}
+			// alertingConfig = config.AlertingConfig
 			return fieldValue.Interface().(provider.AlertProvider)
 		}
 	}
